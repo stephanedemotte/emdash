@@ -15,6 +15,8 @@ import Focus from "@tiptap/extension-focus";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
 import TextAlign from "@tiptap/extension-text-align";
 import Typography from "@tiptap/extension-typography";
 import Underline from "@tiptap/extension-underline";
@@ -28,12 +30,17 @@ import { createPortal } from "react-dom";
 
 import { resolveImageMedia } from "../content/converters/gallery.js";
 import {
+	assertPortableTextMarksSupported,
+	assertProseMirrorMarksSupported,
+} from "../content/converters/mark-safety.js";
+import {
 	deriveLegacyListId,
 	normalizeProseMirrorOrderedListJson,
 	normalizeListId,
 	normalizeListStart,
 	readOrderedListMetadata,
 } from "../content/converters/numbered-list.js";
+import type { PortableTextBlock, ProseMirrorDocument } from "../content/converters/types.js";
 import { computeThumbnailSize } from "../media/thumbnail.js";
 import { CodeMarkExtension } from "./code-mark.js";
 import { InlineCodeBlockExtension } from "./inline-code-block.js";
@@ -449,6 +456,7 @@ function convertPMMark(
 
 function portableTextToPM(blocks: PTBlock[]): JSONContent {
 	if (!blocks || blocks.length === 0) return { type: "doc", content: [{ type: "paragraph" }] };
+	assertPortableTextMarksSupported(blocks as PortableTextBlock[]);
 
 	const content: PMNode[] = [];
 	let i = 0;
@@ -812,6 +820,12 @@ function convertPTMarks(marks: string[], markDefs: Map<string, PTMarkDef>): Mark
 				break;
 			case "code":
 				pm.push({ type: "code" });
+				break;
+			case "superscript":
+				pm.push({ type: "superscript" });
+				break;
+			case "subscript":
+				pm.push({ type: "subscript" });
 				break;
 			default: {
 				const md = markDefs.get(mark);
@@ -2177,6 +2191,7 @@ export function InlinePortableTextEditor({
 		if (!editor) return initialRef.current;
 		const json: unknown = editor.getJSON();
 		if (!isPMNode(json)) return initialRef.current;
+		assertProseMirrorMarksSupported(json as ProseMirrorDocument);
 		return pmToPortableText(json);
 	}, []);
 
@@ -2283,6 +2298,8 @@ export function InlinePortableTextEditor({
 				},
 			}),
 			Underline,
+			Subscript,
+			Superscript,
 			Link.configure({
 				openOnClick: false,
 				HTMLAttributes: { class: "underline text-blue-600 dark:text-blue-400" },
